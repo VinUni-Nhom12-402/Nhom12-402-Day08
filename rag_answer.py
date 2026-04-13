@@ -62,7 +62,7 @@ def retrieve_dense(query: str, top_k: int = TOP_K_SEARCH) -> List[Dict[str, Any]
           - "metadata": metadata (source, section, effective_date, ...)
           - "score": cosine similarity score
     """
-    import chromadb
+    import chromadb, json
     from index import get_embedding, CHROMA_DB_DIR
 
     client = chromadb.PersistentClient(path=str(CHROMA_DB_DIR))
@@ -88,29 +88,10 @@ def retrieve_dense(query: str, top_k: int = TOP_K_SEARCH) -> List[Dict[str, Any]
             "metadata": meta,
             "score": round(score, 4),
         })
-
-        query_embedding = get_embedding(query)
-        results = collection.query(
-            query_embeddings=[query_embedding],
-            n_results=top_k,
-            include=["documents", "metadatas", "distances"]
-        )
+    return chunks
         # Lưu ý: distances trong ChromaDB cosine = 1 - similarity
         # Score = 1 - distance
-    import chromadb
-    from index import get_embedding, CHROMA_DB_DIR
 
-    client = chromadb.PersistentClient(path=str(CHROMA_DB_DIR))
-    collection = client.get_collection("rag_lab")
-
-    query_embedding = get_embedding(query)
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=top_k,
-        include=["documents", "metadatas", "distances"]
-    )
-
-    return results
     # raise NotImplementedError(
     #     "TODO Sprint 2: Implement retrieve_dense().\n"
     #     "Tham khảo comment trong hàm để biết cách query ChromaDB."
