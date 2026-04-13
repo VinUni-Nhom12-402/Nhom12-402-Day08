@@ -260,8 +260,10 @@ def build_context_block(chunks: List[Dict[str, Any]]) -> str:
     return "\n\n".join(context_parts)
 
 
-def build_grounded_prompt(query: str, context_block: str) -> str:
-    """
+def build_grounded_prompt(query: str, context_block: str, output_format: str = "bullet points", language: str = "tiếng Việt", use_case: str = "CS helpdesk") -> str:
+   
+   
+ """
     Xây dựng grounded prompt theo 4 quy tắc từ slide:
     1. Evidence-only: Chỉ trả lời từ retrieved context
     2. Abstain: Thiếu context thì nói không đủ dữ liệu
@@ -274,18 +276,29 @@ def build_grounded_prompt(query: str, context_block: str) -> str:
     - Thêm ngôn ngữ phản hồi (tiếng Việt vs tiếng Anh)
     - Điều chỉnh tone phù hợp với use case (CS helpdesk, IT support)
     """
-    prompt = f"""Answer only from the retrieved context below.
-If the context is insufficient to answer the question, say you do not know and do not make up information.
-Cite the source field (in brackets like [1]) when possible.
-Keep your answer short, clear, and factual.
-Respond in the same language as the question.
+    tone = "thân thiện, đồng cảm và lịch sự" if use_case == "CS helpdesk" else "chuyên nghiệp, kỹ thuật và súc tích"
+    prompt = f"""
+Bạn là một trợ lý ảo trợ giúp cho bộ phận {use_case}. 
+Hãy trả lời câu hỏi của người dùng dựa TRÊN DUY NHẤT thông tin trong phần [Context] dưới đây.
 
-Question: {query}
+Tuân thủ nghiêm ngặt 4 quy tắc:
+1. Evidence-only: Chỉ sử dụng thông tin từ [Context]. Không dùng kiến thức bên ngoài.
+2. Abstain: Nếu [Context] không chứa câu trả lời, hãy phản hồi: "Rất tiếc, tôi không có đủ dữ liệu để trả lời vấn đề này."
+3. Citation: Phải trích dẫn nguồn hoặc phần tương ứng (ví dụ: [Source 1], [Section A]) khi đưa ra thông tin.
+4. Short, clear, stable: Phản hồi ngắn gọn, đi thẳng vào vấn đề.
 
-Context:
+Yêu cầu cụ thể:
+- Ngôn ngữ: Phải trả lời bằng {language}.
+- Sắc thái (Tone): {tone}.
+- Định dạng đầu ra: Trình bày dưới dạng {output_format}.
+[Context]:
 {context_block}
 
-Answer:"""
+[Câu hỏi]:
+{query}
+
+Trả lời:
+"""
     return prompt
 
 
