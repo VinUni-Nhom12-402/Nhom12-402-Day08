@@ -1,7 +1,7 @@
 # Individual Report — 2A202600393 Nguyễn Đức Tiến
 
 ## 1. Đóng góp cụ thể
-
+z
 Tôi phụ trách Sprint 3–4 với vai trò Eval Owner, tập trung vào việc đo lường chất lượng pipeline một cách khách quan.
 
 **Sprint 4 — eval.py:**
