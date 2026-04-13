@@ -1,6 +1,7 @@
 # Báo Cáo Cá Nhân — Lab Day 08: RAG Pipeline
 
 **Họ và tên:** Nguyễn Đức Tiến
+**Mã HV:** 2A202600393
 **Vai trò trong nhóm:** Eval Owner
 **Ngày nộp:** 2026-04-13
 **Độ dài yêu cầu:** 500–800 từ
