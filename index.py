@@ -222,7 +222,7 @@ def _split_by_size(
 
 def get_embedding(text: str) -> List[float]:
     """
-    Tạo embedding vector cho một đoạn text bằng OpenAI Embeddings.
+    Tạo embedding vector cho một đoạn text bằng OpenAI Embeddingsss.
     """
 
     from openai import OpenAI
