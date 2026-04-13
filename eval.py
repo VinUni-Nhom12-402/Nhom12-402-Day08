@@ -88,12 +88,29 @@ def score_faithfulness(
 
     Trả về dict với: score (1-5) và notes (lý do)
     """
-    # TODO Sprint 4: Implement scoring
-    # Tạm thời trả về None (yêu cầu chấm thủ công)
-    return {
-        "score": None,
-        "notes": "TODO: Chấm thủ công hoặc implement LLM-as-Judge",
-    }
+    from rag_answer import call_llm
+    context_texts = "\n\n".join([
+        f"[{i+1}] {c.get('text', '')[:300]}"
+        for i, c in enumerate(chunks_used)
+    ])
+    prompt = f"""Given these retrieved chunks:
+{context_texts}
+
+And this answer:
+{answer}
+
+Rate the faithfulness on a scale of 1-5.
+5 = every claim in the answer is directly supported by the retrieved chunks.
+1 = answer contains information not found in the chunks at all.
+Output only valid JSON: {{"score": <int 1-5>, "reason": "<one sentence>"}}"""
+    try:
+        raw = call_llm(prompt)
+        import re
+        match = re.search(r'\{.*?\}', raw, re.DOTALL)
+        data = json.loads(match.group()) if match else {}
+        return {"score": data.get("score"), "notes": data.get("reason", "")}
+    except Exception as e:
+        return {"score": None, "notes": f"LLM-as-Judge error: {e}"}
 
 
 def score_answer_relevance(
@@ -113,10 +130,25 @@ def score_answer_relevance(
 
     TODO Sprint 4: Implement tương tự score_faithfulness
     """
-    return {
-        "score": None,
-        "notes": "TODO: Implement score_answer_relevance",
-    }
+    from rag_answer import call_llm
+    prompt = f"""Given this question:
+{query}
+
+And this answer:
+{answer}
+
+Rate how well the answer addresses the question on a scale of 1-5.
+5 = directly and completely answers the question.
+1 = does not answer the question at all.
+Output only valid JSON: {{"score": <int 1-5>, "reason": "<one sentence>"}}"""
+    try:
+        raw = call_llm(prompt)
+        import re
+        match = re.search(r'\{.*?\}', raw, re.DOTALL)
+        data = json.loads(match.group()) if match else {}
+        return {"score": data.get("score"), "notes": data.get("reason", "")}
+    except Exception as e:
+        return {"score": None, "notes": f"LLM-as-Judge error: {e}"}
 
 
 def score_context_recall(
@@ -198,10 +230,25 @@ def score_completeness(
          Rate completeness 1-5. Are all key points covered?
          Output: {'score': int, 'missing_points': [str]}"
     """
-    return {
-        "score": None,
-        "notes": "TODO: Implement score_completeness (so sánh với expected_answer)",
-    }
+    from rag_answer import call_llm
+    prompt = f"""Compare this model answer with the expected answer for the question below.
+
+Question: {query}
+Expected answer: {expected_answer}
+Model answer: {answer}
+
+Rate completeness on a scale of 1-5.
+5 = all key points from the expected answer are covered.
+1 = most key points are missing.
+Output only valid JSON: {{"score": <int 1-5>, "missing_points": ["<point1>", "..."], "reason": "<one sentence>"}}"""
+    try:
+        raw = call_llm(prompt)
+        import re
+        match = re.search(r'\{.*?\}', raw, re.DOTALL)
+        data = json.loads(match.group()) if match else {}
+        return {"score": data.get("score"), "notes": data.get("reason", "")}
+    except Exception as e:
+        return {"score": None, "notes": f"LLM-as-Judge error: {e}"}
 
 
 # =============================================================================
@@ -487,24 +534,27 @@ if __name__ == "__main__":
         baseline_results = []
 
     # --- Chạy Variant (sau khi Sprint 3 hoàn thành) ---
-    # TODO Sprint 4: Uncomment sau khi implement variant trong rag_answer.py
-    # print("\n--- Chạy Variant ---")
-    # variant_results = run_scorecard(
-    #     config=VARIANT_CONFIG,
-    #     test_questions=test_questions,
-    #     verbose=True,
-    # )
-    # variant_md = generate_scorecard_summary(variant_results, VARIANT_CONFIG["label"])
-    # (RESULTS_DIR / "scorecard_variant.md").write_text(variant_md, encoding="utf-8")
+    print("\n--- Chạy Variant ---")
+    try:
+        variant_results = run_scorecard(
+            config=VARIANT_CONFIG,
+            test_questions=test_questions,
+            verbose=True,
+        )
+        variant_md = generate_scorecard_summary(variant_results, VARIANT_CONFIG["label"])
+        (RESULTS_DIR / "scorecard_variant.md").write_text(variant_md, encoding="utf-8")
+        print(f"\nScorecard variant lưu tại: {RESULTS_DIR / 'scorecard_variant.md'}")
+    except Exception as e:
+        print(f"Variant error: {e}")
+        variant_results = []
 
     # --- A/B Comparison ---
-    # TODO Sprint 4: Uncomment sau khi có cả baseline và variant
-    # if baseline_results and variant_results:
-    #     compare_ab(
-    #         baseline_results,
-    #         variant_results,
-    #         output_csv="ab_comparison.csv"
-    #     )
+    if baseline_results and variant_results:
+        compare_ab(
+            baseline_results,
+            variant_results,
+            output_csv="ab_comparison.csv"
+        )
 
     print("\n\nViệc cần làm Sprint 4:")
     print("  1. Hoàn thành Sprint 2 + 3 trước")
