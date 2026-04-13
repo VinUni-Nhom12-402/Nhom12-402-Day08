@@ -12,6 +12,11 @@ Tôi phụ trách Sprint 3–4 với vai trò Eval Owner, tập trung vào việ
 
 **Metric `score_context_recall()`** đã có sẵn logic partial-match, tôi giữ nguyên vì logic đúng — kiểm tra tên file trong retrieved sources.
 
+**Grading Run (17:00):**
+
+- Viết `run_grading.py` để tự động hóa việc chạy pipeline với `grading_questions.json`.
+- Lúc 17:00 khi file được public, chạy pipeline với cấu hình hybrid+rerank, sinh ra `logs/grading_run.json` đủ 10 câu với timestamp hợp lệ.
+
 ---
 
 ## 2. Phân tích câu grading: q03 — "Ai phải phê duyệt để cấp quyền Level 3?"
