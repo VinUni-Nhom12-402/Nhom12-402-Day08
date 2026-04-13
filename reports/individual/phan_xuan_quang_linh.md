@@ -1,230 +1,208 @@
-# Individual Report — 2A202600492 Phan Xuân Quang Linh
+# Báo Cáo Cá Nhân — Lab Day 08: RAG Pipeline
 
-## 1. Đóng góp cụ thể
-
-Tôi phụ trách Sprint 2, 3 với vai trò đánh giá và phát triển, tập trung vào việc đo lường chất lượng pipeline một cách khách quan.
-
-# Sprint 4 — Evaluation (eval.py)
-
-## 1. LLM-as-Judge Implementation
-
-Trong sprint này, hệ thống được mở rộng với cơ chế đánh giá tự động bằng LLM (LLM-as-Judge). Ba tiêu chí chính được triển khai gồm:
-
-- Faithfulness (độ trung thực với context)
-- Answer Relevance (độ liên quan với câu hỏi)
-- Completeness (độ đầy đủ của câu trả lời)
-
-Mỗi tiêu chí được реализ hóa thông qua một hàm scoring riêng. Các hàm này nhận đầu vào là câu hỏi, context (các đoạn văn được retrieve) và câu trả lời do mô hình sinh ra. Sau đó, một prompt có cấu trúc rõ ràng được tạo ra và gửi tới LLM để đánh giá.
-
-Kết quả trả về được parse dưới dạng JSON, bao gồm:
-- Điểm số từ 1 đến 5
-- Lý do ngắn gọn giải thích cho điểm số đó
-
-Cách tiếp cận này giúp đánh giá chất lượng câu trả lời một cách tự động, thay vì phải kiểm tra thủ công.
+- **Họ và tên:** Phan Xuân Quang Linh
+- **Vai trò trong nhóm:** Retrieval + Answer owner
+- **Ngày nộp:** 13/04/2026
+- **Độ dài yêu cầu:** 500–800 từ (Bản tóm tắt)
+- **Mã HV**: 2A202600492
 
 ---
 
-## 2. Kích hoạt A/B Testing
+## 1. Tôi đã làm gì trong lab này?
 
-Hệ thống được thiết kế để so sánh hai cấu hình pipeline:
+Trong lab này, tôi đảm nhận vai trò **Retrieval + Answer Owner**, chịu trách nhiệm chính trong việc xây dựng pipeline và truy vấn db 
 
-- Baseline: sử dụng dense retrieval
-- Variant: sử dụng hybrid retrieval kết hợp rerank
+### **Sprint 1 — Indexing (`index.py`)**
 
-Trong quá trình chạy, chỉ thay đổi một yếu tố mỗi lần (theo nguyên tắc A/B testing), cụ thể là:
-- Thay đổi retrieval mode từ dense sang hybrid
-- Bật thêm bước rerank ở variant
+- Khởi tạo hệ thống lưu trữ vector bằng ChromaDB (Persistent Client)
+- Tích hợp API embedding để chuyển đổi dữ liệu text thành vector
+- Lưu trữ các chunk do Retrieval Owner cung cấp vào vector store
+- Đảm bảo dữ liệu có metadata đầy đủ để phục vụ truy xuất sau này
 
-Pipeline được chạy với cùng một tập câu hỏi để đảm bảo tính công bằng khi so sánh. Kết quả từ hai cấu hình sẽ được tổng hợp để đánh giá sự cải thiện.
-
----
-
-## 3. End-to-End Evaluation
-
-Hệ thống được chạy end-to-end với 10 câu hỏi.
-
-Với mỗi câu hỏi:
-- Pipeline RAG thực hiện retrieve → (rerank) → generate
-- Thu thập các thông tin:
-  - Câu trả lời
-  - Danh sách nguồn (sources)
-  - Các chunk được sử dụng
-
-Sau đó, áp dụng LLM-as-Judge để chấm điểm theo 3 tiêu chí đã nêu.
-
-Kết quả được lưu thành các file:
-- scorecard_baseline.md
-- scorecard_variant.md
-- ab_comparison.csv
-
-Các file này giúp so sánh trực quan giữa hai cấu hình pipeline.
+Đây là nền tảng để hệ thống có thể tìm kiếm thông tin hiệu quả.
 
 ---
 
-## 4. Context Recall
+### **Sprint 2 — RAG Pipeline (`rag_answer.py`)**
 
-Metric Context Recall được giữ nguyên do đã có logic phù hợp.
+- Xây dựng pipeline xử lý câu hỏi theo luồng:
+  - Nhận query
+  - Retrieve dữ liệu liên quan
+  - Xây dựng context
+  - Gọi LLM để sinh câu trả lời
+- Triển khai retrieval ban đầu bằng phương pháp dense retrieval
+- Thiết kế **Grounded Prompt** để kiểm soát hành vi của LLM:
+  - Bắt buộc chỉ trả lời dựa trên context
+  - Yêu cầu trích dẫn nguồn
+  - Bắt buộc trả lời "không biết" nếu thiếu dữ liệu
 
-Cách tính:
-- So sánh danh sách source mà hệ thống retrieve được với ground truth
-- Dựa trên tên file trong metadata
-- Hỗ trợ partial-match để linh hoạt hơn
-
-Metric này phản ánh khả năng của hệ thống trong việc retrieve đúng tài liệu liên quan.
-
----
-
-# Grading Run (17:00)
-
-## 1. Tự động hóa pipeline
-
-Một script riêng được xây dựng để tự động chạy pipeline khi có bộ câu hỏi grading.
-
-Quy trình:
-- Load dữ liệu từ file chứa câu hỏi
-- Chạy pipeline với cấu hình tốt nhất (hybrid + rerank)
-- Lặp qua toàn bộ câu hỏi
+Phần này đóng vai trò cực kỳ quan trọng vì:
+- Là “xương sống” của hệ thống
+- Cung cấp output ổn định để Eval Owner có thể đo lường chính xác
 
 ---
 
-## 2. Kết quả đầu ra
+### **Sprint 3 — Chuẩn bị cho Evaluation**
 
-Kết quả được lưu vào file log, bao gồm:
-- Câu hỏi
-- Câu trả lời
-- Nguồn được sử dụng
-- Cấu hình pipeline
-- Timestamp
+- Đảm bảo pipeline có input/output rõ ràng
+- Chuẩn hóa format trả về:
+  - Answer
+  - Sources
+  - Chunks used
+- Hỗ trợ so sánh các chiến lược retrieval (dense, hybrid, rerank)
 
-Việc lưu log giúp kiểm tra lại kết quả và phục vụ cho việc đánh giá sau này.
-
----
-
-# 2. Phân tích câu grading: q03
-
-## Câu hỏi
-"Ai phải phê duyệt để cấp quyền Level 3?"
+Điều này giúp việc đánh giá và A/B testing trở nên dễ dàng và nhất quán.
 
 ---
 
-## Kết quả
+## 2. Điều tôi hiểu rõ hơn sau lab này
 
-- Faithfulness: thấp (baseline: 1/5, variant: 2/5)
-- Relevance: 5/5
-- Recall: 5/5
+### **Grounded Prompting quan trọng hơn tôi nghĩ**
 
----
+Trước đây, tôi nghĩ RAG chỉ đơn giản là:
+> Query → Retrieve → Generate
 
-## Pipeline xử lý
+Tuy nhiên, thực tế cho thấy nếu không kiểm soát chặt phần prompt:
+- Model sẽ dễ dàng sinh ra thông tin không có trong context
+- Dẫn đến hiện tượng hallucination
 
-Hệ thống retrieve đúng tài liệu liên quan đến access control. Câu trả lời được sinh ra hoàn toàn chính xác về mặt nội dung, liệt kê đầy đủ các bên phê duyệt.
+Việc thiết kế prompt với các nguyên tắc như:
+- Chỉ sử dụng thông tin từ context (Evidence-only)
+- Bắt buộc từ chối nếu không đủ dữ liệu (Abstain)
 
-Tuy nhiên, điểm Faithfulness lại thấp.
-
----
-
-## Nguyên nhân
-
-Thông tin về Level 3 không nằm trong một đoạn duy nhất mà bị phân tán ở nhiều chunk khác nhau. Khi xây dựng context, các chunk này được ghép lại nhưng không tạo thành một đoạn liên tục.
-
-Do đó, mô hình phải tổng hợp thông tin từ nhiều nguồn để đưa ra câu trả lời hoàn chỉnh.
-
-LLM-as-Judge đánh giá hành vi này là "suy luận tổng hợp" thay vì "trích xuất trực tiếp từ context", và vì vậy trừ điểm Faithfulness.
+giúp giảm gần như hoàn toàn lỗi này.
 
 ---
 
-## Root Cause
+### **Baseline pipeline là nền tảng cho mọi cải tiến**
 
-Nguyên nhân chính nằm ở bước chunking:
+Một hệ thống muốn đánh giá được:
+- Hybrid retrieval tốt hơn dense hay không
+- Rerank có cải thiện chất lượng hay không
 
-- Nội dung bị cắt theo độ dài ký tự
-- Các bảng hoặc danh sách bị chia nhỏ
-- Không đảm bảo một chunk chứa trọn vẹn thông tin logic
+thì trước hết baseline phải:
+- Ổn định
+- Dễ hiểu
+- Có input/output rõ ràng
 
-Dẫn đến:
-- Retrieval đúng document nhưng sai granularity
-- Context không đủ mạnh để support trực tiếp câu trả lời
-
----
-
-## Đề xuất cải tiến
-
-- Tăng kích thước chunk để giữ nguyên nội dung quan trọng
-- Giảm overlap để tránh phân mảnh thông tin
-- Áp dụng filter theo metadata (ví dụ section) để ưu tiên đúng vùng nội dung
+Nếu baseline không tốt:
+- Mọi kết quả so sánh phía sau đều không đáng tin
 
 ---
 
-# 3. Rút kinh nghiệm
+## 3. Điều tôi ngạc nhiên hoặc gặp khó khăn
 
-Một điểm quan trọng rút ra:
+### **Hiểu sai metric của ChromaDB**
 
-Retrieval tốt không đồng nghĩa với việc generation tốt.
+Khó khăn lớn nhất là ở bước xử lý kết quả retrieval.
 
----
+Ban đầu, tôi hiểu nhầm giá trị `distance` trả về là:
+> độ tương đồng (similarity)
 
-## Quan sát
+Nhưng thực tế:
+- Đây là **cosine distance**
+- Nghĩa là càng nhỏ thì càng giống
 
-- Context Recall đạt tối đa
-- Nhưng Faithfulness vẫn thấp
+Do đó cần chuyển đổi:
+> similarity = 1.0 - distance
 
----
+Nếu không xử lý đúng:
+- Ranking bị đảo ngược
+- Các chunk kém liên quan lại đứng top
 
-## Phân tích
-
-Retriever có thể lấy đúng tài liệu, nhưng nếu chunk không chứa đúng thông tin cần thiết thì mô hình vẫn phải suy luận.
-
-Trong một số trường hợp, câu trả lời đúng nhờ:
-- kiến thức có sẵn của mô hình
-- hoặc suy luận từ nhiều đoạn context
-
-Tuy nhiên, điều này không được coi là grounded, nên bị giảm điểm Faithfulness.
+Tôi đã mất khá nhiều thời gian debug trước khi nhận ra vấn đề này.
 
 ---
 
-## Khó khăn thực tế
+### **LLM vẫn có thể “lách luật”**
 
-LLM-as-Judge không hoàn toàn ổn định:
-- Cùng một câu trả lời có thể cho điểm khác nhau giữa các lần chạy
+Một điều khá bất ngờ là:
 
-Giải pháp:
-- Sử dụng temperature = 0 để giảm randomness
+Ngay cả khi đã thiết kế prompt rất chặt chẽ, nếu để:
+- temperature > 0
 
----
+thì model vẫn có xu hướng:
+- tự suy diễn thêm thông tin
+- trả lời thay vì từ chối
 
-# 4. Đề xuất cải tiến
+Giải pháp hiệu quả nhất:
+- Đặt temperature = 0
 
-## Cải tiến 1 — Chunking theo cấu trúc
-
-Các câu có điểm thấp thường liên quan đến:
-- bảng
-- danh sách
-- ma trận phân quyền
-
-Do đó, cần:
-- thiết kế chunking theo cấu trúc thay vì theo ký tự
-- giữ nguyên toàn bộ bảng trong một chunk
+Điều này giúp output ổn định và tuân thủ luật tốt hơn.
 
 ---
 
-## Cải tiến 2 — Metadata filtering
+## 4. Phân tích một câu hỏi scorecard: q07
 
-So với baseline, cấu hình hybrid + rerank đã cải thiện điểm Faithfulness và Completeness.
-
-Bước tiếp theo:
-- sử dụng metadata như section hoặc department để filter khi retrieve
-- loại bỏ các chunk không liên quan
-
-Ví dụ:
-- câu hỏi về Access Control nhưng vẫn retrieve nhầm tài liệu HR
+### **Câu hỏi**
+> Công ty sẽ phạt bao nhiêu nếu team IT vi phạm cam kết SLA P1?
 
 ---
 
-## Kết luận
+### **Phân tích**
 
-Pipeline hiện tại đã đúng về mặt quy trình, nhưng vấn đề nằm ở:
+- Tài liệu gốc **không hề có thông tin về mức phạt**
+- Đây là một câu hỏi dạng “bẫy hallucination”
 
-- cách chia chunk
-- cách chọn context
+---
 
-Đây là hai yếu tố ảnh hưởng trực tiếp đến Faithfulness, không chỉ riêng retrieval strategy.
+### **Trước khi fix**
+
+- Model cố gắng suy đoán mức phạt
+- Sinh ra câu trả lời không có trong tài liệu
+- Dẫn đến điểm Faithfulness rất thấp
+
+---
+
+### **Sau khi áp dụng Grounded Prompt**
+
+- Model tuân thủ luật:
+  - Không đủ dữ liệu → từ chối trả lời
+- Output:
+  > Không có đủ dữ liệu để trả lời câu hỏi
+
+---
+
+### **Insight rút ra**
+
+- Vấn đề không nằm ở Retrieval
+- Mà nằm ở bước Generation
+
+Nếu không kiểm soát:
+- Model sẽ luôn cố “trả lời cho bằng được”
+
+Do đó:
+> Grounded Prompt là tuyến phòng thủ quan trọng nhất chống hallucination
+
+---
+
+## 5. Nếu có thêm thời gian, tôi sẽ làm gì?
+
+### **Phát triển Query Routing**
+
+Hiện tại pipeline xử lý tất cả query theo cùng một cách, điều này chưa tối ưu.
+
+Ý tưởng cải tiến:
+
+- Phân loại query ngay từ đầu:
+  - Query đơn giản → dùng sparse retrieval (keyword-based)
+  - Query phức tạp → dùng dense hoặc hybrid retrieval
+
+---
+
+### **Lợi ích**
+
+- Giảm độ nhiễu trong retrieval
+- Tăng tốc độ phản hồi (giảm latency)
+- Tránh việc sử dụng các phương pháp nặng khi không cần thiết
+
+---
+
+### **Định hướng**
+
+Xây dựng một module:
+- Nhận query
+- Phân tích độ phức tạp
+- Route sang pipeline phù hợp
+
+---
