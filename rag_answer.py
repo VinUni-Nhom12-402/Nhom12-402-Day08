@@ -260,33 +260,52 @@ def build_context_block(chunks: List[Dict[str, Any]]) -> str:
     return "\n\n".join(context_parts)
 
 
-def build_grounded_prompt(query: str, context_block: str) -> str:
+def build_grounded_prompt(
+    query: str, 
+    context_block: str, 
+    output_format: str = "bullet points", 
+    language: str = "tiếng Việt", 
+    use_case: str = "CS helpdesk"
+) -> str:
     """
-    Xây dựng grounded prompt theo 4 quy tắc từ slide:
-    1. Evidence-only: Chỉ trả lời từ retrieved context
-    2. Abstain: Thiếu context thì nói không đủ dữ liệu
-    3. Citation: Gắn source/section khi có thể
-    4. Short, clear, stable: Output ngắn, rõ, nhất quán
-
-    TODO Sprint 2:
-    Đây là prompt baseline. Trong Sprint 3, bạn có thể:
-    - Thêm hướng dẫn về format output (JSON, bullet points)
-    - Thêm ngôn ngữ phản hồi (tiếng Việt vs tiếng Anh)
-    - Điều chỉnh tone phù hợp với use case (CS helpdesk, IT support)
+    Xây dựng grounded prompt theo 4 quy tắc:
+    1. Evidence-only: Chỉ trả lời từ retrieved context.
+    2. Abstain: Thiếu context thì từ chối trả lời.
+    3. Citation: Trích dẫn nguồn (nếu context có sẵn nhãn nguồn).
+    4. Short, clear, stable: Phản hồi ngắn gọn.
     """
-    prompt = f"""Answer only from the retrieved context below.
-If the context is insufficient to answer the question, say you do not know and do not make up information.
-Cite the source field (in brackets like [1]) when possible.
-Keep your answer short, clear, and factual.
-Respond in the same language as the question.
+    
+    # Xác định tone dựa trên use_case
+    if use_case == "CS helpdesk":
+        tone = "thân thiện, đồng cảm và lịch sự"
+    else:
+        tone = "chuyên nghiệp, kỹ thuật và súc tích"
 
-Question: {query}
+    prompt = f"""
+Bạn là một trợ lý ảo trợ giúp cho bộ phận {use_case}. 
+Hãy trả lời câu hỏi của người dùng dựa TRÊN DUY NHẤT thông tin trong phần [Context] dưới đây.
 
-Context:
+Tuân thủ nghiêm ngặt 4 quy tắc:
+1. Evidence-only: Chỉ sử dụng thông tin từ [Context]. Không dùng kiến thức bên ngoài.
+2. Abstain: Nếu [Context] không chứa câu trả lời, hãy phản hồi: "Rất tiếc, tôi không có đủ dữ liệu để trả lời vấn đề này."
+3. Citation: Phải trích dẫn nguồn hoặc phần tương ứng (ví dụ: [Source 1], [Section A]) có sẵn trong [Context].
+4. Short, clear, stable: Phản hồi ngắn gọn, đi thẳng vào vấn đề.
+
+Yêu cầu cụ thể:
+- Ngôn ngữ: {language}.
+- Sắc thái (Tone): {tone}.
+- Định dạng đầu ra: {output_format}.
+
+[Context]:
 {context_block}
 
-Answer:"""
+[Câu hỏi]:
+{query}
+
+Trả lời:
+""".strip()
     return prompt
+
 
 
 def call_llm(prompt: str) -> str:
@@ -316,10 +335,15 @@ def call_llm(prompt: str) -> str:
 
     Lưu ý: Dùng temperature=0 hoặc thấp để output ổn định cho evaluation.
     """
-    raise NotImplementedError(
-        "TODO Sprint 2: Implement call_llm().\n"
-        "Chọn Option A (OpenAI) hoặc Option B (Gemini) trong TODO comment."
-    )
+    from openai import OpenAI
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,     # temperature=0 để output ổn định, dễ đánh giá
+            max_tokens=512,
+        )
+        return response.choices[0].message.content
 
 
 def rag_answer(
