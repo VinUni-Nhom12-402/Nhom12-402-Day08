@@ -49,23 +49,9 @@ _cross_encoder = None
 # =============================================================================
 
 def retrieve_dense(query: str, top_k: int = TOP_K_SEARCH) -> List[Dict[str, Any]]:
-    import chromadb
-    from index import get_embedding, CHROMA_DB_DIR
-
-    client = chromadb.PersistentClient(path=str(CHROMA_DB_DIR))
-    collection = client.get_collection("rag_lab")
-
-    query_embedding = get_embedding(query)
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=top_k,
-        include=["documents", "metadatas", "distances"]
-    )
-
-    return results
     """
     Dense retrieval: tìm kiếm theo embedding similarity trong ChromaDB.
-    
+
     Args:
         query: Câu hỏi của người dùng
         top_k: Số chunk tối đa trả về
@@ -111,7 +97,20 @@ def retrieve_dense(query: str, top_k: int = TOP_K_SEARCH) -> List[Dict[str, Any]
         )
         # Lưu ý: distances trong ChromaDB cosine = 1 - similarity
         # Score = 1 - distance
-    """
+    import chromadb
+    from index import get_embedding, CHROMA_DB_DIR
+
+    client = chromadb.PersistentClient(path=str(CHROMA_DB_DIR))
+    collection = client.get_collection("rag_lab")
+
+    query_embedding = get_embedding(query)
+    results = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=top_k,
+        include=["documents", "metadatas", "distances"]
+    )
+
+    return results
     # raise NotImplementedError(
     #     "TODO Sprint 2: Implement retrieve_dense().\n"
     #     "Tham khảo comment trong hàm để biết cách query ChromaDB."
@@ -299,6 +298,7 @@ def transform_query(query: str, strategy: str = "expansion") -> List[str]:
       - "decomposition": Tách query phức tạp thành 2-3 sub-queries
       - "hyde": Sinh câu trả lời giả (hypothetical document) để embed thay query
     """
+
     # 1) Nếu chiến lược chưa được implement, trả về query gốc
     if strategy not in ("expansion", "decomposition", "hyde"):
         return [query]
@@ -400,10 +400,10 @@ def build_context_block(chunks: List[Dict[str, Any]]) -> str:
 
 
 def build_grounded_prompt(
-    query: str, 
-    context_block: str, 
-    output_format: str = "bullet points", 
-    language: str = "tiếng Việt", 
+    query: str,
+    context_block: str,
+    output_format: str = "bullet points",
+    language: str = "tiếng Việt",
     use_case: str = "CS helpdesk"
 ) -> str:
     """
@@ -413,7 +413,7 @@ def build_grounded_prompt(
     3. Citation: Trích dẫn nguồn (nếu context có sẵn nhãn nguồn).
     4. Short, clear, stable: Phản hồi ngắn gọn.
     """
-    
+
     # Xác định tone dựa trên use_case
     if use_case == "CS helpdesk":
         tone = "thân thiện, đồng cảm và lịch sự"
@@ -421,7 +421,7 @@ def build_grounded_prompt(
         tone = "chuyên nghiệp, kỹ thuật và súc tích"
 
     prompt = f"""
-Bạn là một trợ lý ảo trợ giúp cho bộ phận {use_case}. 
+Bạn là một trợ lý ảo trợ giúp cho bộ phận {use_case}.
 Hãy trả lời câu hỏi của người dùng dựa TRÊN DUY NHẤT thông tin trong phần [Context] dưới đây.
 
 Tuân thủ nghiêm ngặt 4 quy tắc:
@@ -479,17 +479,17 @@ def call_llm(prompt: str) -> str:
         )
         return response.text
 
-    Lưu ý: Dùng temperature=0 hoặc thấp để output ổn định cho evaluation.
-    """
+    # Lưu ý: Dùng temperature=0 hoặc thấp để output ổn định cho evaluation.
+
     from openai import OpenAI
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0,     # temperature=0 để output ổn định, dễ đánh giá
-            max_tokens=512,
-        )
-        return response.choices[0].message.content
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0,     # temperature=0 để output ổn định, dễ đánh giá
+        max_tokens=512,
+    )
+    return response.choices[0].message.content
 
 
 def rag_answer(
